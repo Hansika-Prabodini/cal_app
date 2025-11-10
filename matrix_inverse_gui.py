@@ -1,127 +1,195 @@
-"""
-Matrix Inverse Calculator - Tkinter GUI Skeleton
-
-This module provides the initial GUI scaffolding only. No computation
-or validation is implemented in this ticket.
-
-Requirements addressed:
-- Tk root window with title, resizable, geometry and minsize
-- Top-level layout frames: controls, input grid area, results area
-- Size selector (IntVar 2–5, default 3) via Spinbox
-- Placeholder buttons: Compute Inverse, Clear
-- Section labels: Matrix Size, Input Matrix, Inverse (Result)
-- Results area uses a disabled Text widget placeholder
-- Grid weights so input and results areas expand
-- Run guard to start mainloop
-"""
-
-import tkinter as tk
-from tkinter import ttk
+import sys
+from typing import List
 
 
-class MatrixInverseApp:
-    def __init__(self, master: tk.Tk):
-        self.master = master
-        self._configure_root()
-        self._init_state()
-        self._build_layout()
+def invert_matrix(a: List[List[float]]) -> List[List[float]]:
+    """
+    Invert a square matrix using Gauss-Jordan elimination with partial pivoting.
 
-    # Root/window configuration
-    def _configure_root(self) -> None:
-        self.master.title("Matrix Inverse Calculator")
-        # Suggested comfortable size for 5x5 grid area
-        self.master.geometry("900x600")
-        # Sensible minimum size to keep layout usable
-        self.master.minsize(700, 450)
-        # Ensure content can expand
-        self.master.rowconfigure(0, weight=0)
-        self.master.rowconfigure(1, weight=2)
-        self.master.rowconfigure(2, weight=1)
-        self.master.columnconfigure(0, weight=1)
+    Contract:
+    - Pure Python, no external libs.
+    - Input validation:
+      - a must be a non-empty list of lists of numbers with equal row lengths
+      - Must be square and size n in [2, 5]
+    - Algorithm:
+      - Work on augmented matrix [A | I]
+      - For each column k:
+        - Find pivot with max |value| in rows k..n-1
+        - If |pivot| < 1e-12 -> raise ValueError('singular')
+        - Swap rows, normalize pivot row, eliminate column in other rows
+      - Return right side as inverse
+    - Do not mutate input 'a'
+    """
+    # Validate type and structure
+    if not isinstance(a, list) or len(a) == 0:
+        raise ValueError("input must be a non-empty list of rows")
 
-    def _init_state(self) -> None:
-        # IntVar for matrix size (2–5), default 3
-        self.size_var = tk.IntVar(value=3)
+    n = len(a)
+    if n < 2 or n > 5:
+        raise ValueError("matrix size must be between 2 and 5")
 
-    def _build_layout(self) -> None:
-        # Controls frame (top)
-        controls = ttk.Frame(self.master, padding=(10, 10))
-        controls.grid(row=0, column=0, sticky="ew")
-        controls.columnconfigure(0, weight=0)
-        controls.columnconfigure(1, weight=0)
-        controls.columnconfigure(2, weight=0)
-        controls.columnconfigure(3, weight=1)  # spacer/stretch
-        controls.columnconfigure(4, weight=0)
-        controls.columnconfigure(5, weight=0)
+    # Validate rows
+    row_len = None
+    for i, row in enumerate(a):
+        if not isinstance(row, list) or len(row) == 0:
+            raise ValueError("each row must be a non-empty list")
+        if row_len is None:
+            row_len = len(row)
+        elif len(row) != row_len:
+            raise ValueError("all rows must have the same length")
+        # Ensure numeric entries
+        for val in row:
+            if not isinstance(val, (int, float)):
+                raise ValueError("matrix entries must be numbers")
 
-        # Matrix Size label
-        size_label = ttk.Label(controls, text="Matrix Size")
-        size_label.grid(row=0, column=0, sticky="w", padx=(0, 8))
+    if row_len != n:
+        raise ValueError("matrix must be square (n x n)")
 
-        # Size selector Spinbox (2–5), default shown from IntVar=3
-        self.size_spin = ttk.Spinbox(
-            controls,
-            from_=2,
-            to=5,
-            textvariable=self.size_var,
-            width=5,
-            wrap=False,
-            justify="center",
-        )
-        self.size_spin.grid(row=0, column=1, sticky="w")
+    # Build augmented matrix [A | I] as floats; copy values to avoid mutating input
+    aug = []
+    for i in range(n):
+        left = [float(x) for x in a[i]]
+        right = [0.0] * n
+        right[i] = 1.0
+        aug.append(left + right)
 
-        # Placeholder buttons
-        self.compute_btn = ttk.Button(controls, text="Compute Inverse")
-        self.compute_btn.grid(row=0, column=4, padx=(8, 8))
+    # Gauss-Jordan with partial pivoting
+    for k in range(n):
+        # Find pivot row
+        pivot_row = max(range(k, n), key=lambda r: abs(aug[r][k]))
+        pivot_val = aug[pivot_row][k]
+        if abs(pivot_val) < 1e-12:
+            raise ValueError('singular')
+        # Swap current row with pivot row if needed
+        if pivot_row != k:
+            aug[k], aug[pivot_row] = aug[pivot_row], aug[k]
+        # Normalize pivot row to make pivot 1
+        pivot = aug[k][k]
+        scale = 1.0 / pivot
+        for j in range(2 * n):
+            aug[k][j] *= scale
+        # Eliminate this column in all other rows
+        for r in range(n):
+            if r == k:
+                continue
+            factor = aug[r][k]
+            if factor == 0.0:
+                continue
+            for j in range(2 * n):
+                aug[r][j] -= factor * aug[k][j]
 
-        self.clear_btn = ttk.Button(controls, text="Clear")
-        self.clear_btn.grid(row=0, column=5)
-
-        # Input section container
-        input_section = ttk.Frame(self.master, padding=(10, 5))
-        input_section.grid(row=1, column=0, sticky="nsew")
-        input_section.rowconfigure(1, weight=1)  # grid area grows
-        input_section.columnconfigure(0, weight=1)
-
-        input_label = ttk.Label(input_section, text="Input Matrix")
-        input_label.grid(row=0, column=0, sticky="w", pady=(0, 6))
-
-        # Placeholder for future Entry grid
-        self.input_grid_frame = ttk.Frame(input_section, relief="groove", padding=10)
-        self.input_grid_frame.grid(row=1, column=0, sticky="nsew")
-        self.input_grid_frame.rowconfigure(0, weight=1)
-        self.input_grid_frame.columnconfigure(0, weight=1)
-
-        # Results section container
-        results_section = ttk.Frame(self.master, padding=(10, 5))
-        results_section.grid(row=2, column=0, sticky="nsew")
-        results_section.rowconfigure(1, weight=1)
-        results_section.columnconfigure(0, weight=1)
-
-        results_label = ttk.Label(results_section, text="Inverse (Result)")
-        results_label.grid(row=0, column=0, sticky="w", pady=(0, 6))
-
-        # Disabled Text widget as placeholder for results
-        self.results_text = tk.Text(results_section, height=8, wrap="word")
-        self.results_text.grid(row=1, column=0, sticky="nsew")
-
-        # Insert placeholder text and disable editing
-        self._set_results_placeholder(
-            "Result will appear here after computation. This is a placeholder."
-        )
-
-    def _set_results_placeholder(self, text: str) -> None:
-        self.results_text.configure(state="normal")
-        self.results_text.delete("1.0", tk.END)
-        self.results_text.insert("1.0", text)
-        self.results_text.configure(state="disabled")
+    # Extract inverse from augmented matrix
+    inv = []
+    for i in range(n):
+        inv.append(aug[i][n:2 * n])
+    return inv
 
 
-def main() -> None:
+# ---------------- Self-test helpers ---------------- #
+
+def matmul(A: List[List[float]], B: List[List[float]]) -> List[List[float]]:
+    if not A or not B:
+        raise ValueError("matmul: empty matrices")
+    n = len(A)
+    p = len(A[0])
+    if any(len(row) != p for row in A):
+        raise ValueError("matmul: inconsistent row lengths in A")
+    if any(len(row) != len(B[0]) for row in B):
+        pass  # validated later
+    if len(B) != p:
+        raise ValueError("matmul: inner dimensions must match")
+    m = len(B[0])
+    C = [[0.0 for _ in range(m)] for _ in range(n)]
+    for i in range(n):
+        for k in range(p):
+            aik = float(A[i][k])
+            if aik == 0.0:
+                continue
+            for j in range(m):
+                C[i][j] += aik * float(B[k][j])
+    return C
+
+
+def is_close_to_identity(M: List[List[float]], tol: float = 1e-9) -> bool:
+    n = len(M)
+    if any(len(row) != n for row in M):
+        return False
+    for i in range(n):
+        for j in range(n):
+            expected = 1.0 if i == j else 0.0
+            if abs(M[i][j] - expected) > tol:
+                return False
+    return True
+
+
+# ---------------- CLI entrypoint ---------------- #
+
+def _run_selftests() -> None:
+    failures = []
+
+    def check(name: str, fn):
+        try:
+            fn()
+        except Exception as e:
+            failures.append((name, e))
+
+    # Test 2x2
+    def test_2x2():
+        A = [[4.0, 7.0], [2.0, 6.0]]
+        invA = invert_matrix(A)
+        I = matmul(A, invA)
+        assert is_close_to_identity(I, tol=1e-9), f"2x2 not identity: {I}"
+
+    # Test 3x3
+    def test_3x3():
+        A = [
+            [3.0, 0.0, 2.0],
+            [2.0, 0.0, -2.0],
+            [0.0, 1.0, 1.0],
+        ]
+        invA = invert_matrix(A)
+        I = matmul(A, invA)
+        assert is_close_to_identity(I, tol=1e-9), f"3x3 not identity: {I}"
+
+    # Singular matrix: duplicate rows
+    def test_singular():
+        A = [[1.0, 2.0], [1.0, 2.0]]
+        try:
+            _ = invert_matrix(A)
+        except ValueError as e:
+            if str(e) == 'singular':
+                return
+            raise AssertionError(f"Expected ValueError('singular'), got {e!r}")
+        raise AssertionError("Expected singular error but inversion succeeded")
+
+    check("2x2 inversion", test_2x2)
+    check("3x3 inversion", test_3x3)
+    check("singular detection", test_singular)
+
+    if failures:
+        for name, e in failures:
+            print(f"SELFTEST FAILED: {name}: {e}", file=sys.stderr)
+        sys.exit(1)
+    else:
+        print("All self-tests passed.")
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    if '--selftest' in sys.argv:
+        _run_selftests()
+
+    # Minimal GUI stub (will be extended elsewhere). Keep independent from invert_matrix.
+    try:
+        import tkinter as tk  # type: ignore
+    except Exception:
+        # If tkinter is unavailable in runtime environment, just exit silently.
+        sys.exit(0)
+
     root = tk.Tk()
-    app = MatrixInverseApp(root)
+    root.title("Matrix Inverse (Gauss-Jordan)")
+
+    label = tk.Label(root, text="Matrix Inverse GUI (stub)")
+    label.pack(padx=20, pady=20)
+
     root.mainloop()
-
-
-if __name__ == "__main__":
-    main()

@@ -42,6 +42,8 @@ class MatrixInverseApp:
     def _init_state(self) -> None:
         # IntVar for matrix size (2–5), default 3
         self.size_var = tk.IntVar(value=3)
+        # Register validation command for spinbox
+        self.validate_cmd = self.master.register(self._validate_size)
 
     def _build_layout(self) -> None:
         # Controls frame (top)
@@ -67,8 +69,12 @@ class MatrixInverseApp:
             width=5,
             wrap=False,
             justify="center",
+            validate="focusout",
+            validatecommand=(self.validate_cmd, '%P')
         )
         self.size_spin.grid(row=0, column=1, sticky="w")
+        # Bind additional event to validate on Return key
+        self.size_spin.bind('<Return>', lambda e: self._validate_and_correct())
 
         # Placeholder buttons
         self.compute_btn = ttk.Button(controls, text="Compute Inverse")
@@ -115,6 +121,50 @@ class MatrixInverseApp:
         self.results_text.delete("1.0", tk.END)
         self.results_text.insert("1.0", text)
         self.results_text.configure(state="disabled")
+    
+    def _validate_size(self, value_if_allowed: str) -> bool:
+        """
+        Validate that the spinbox value is within the allowed range (2-5).
+        
+        Args:
+            value_if_allowed: The proposed value as a string
+            
+        Returns:
+            True if valid, False otherwise (which triggers correction)
+        """
+        if value_if_allowed == "":
+            # Empty string during editing is allowed temporarily
+            return True
+        
+        try:
+            val = int(value_if_allowed)
+            # Check if value is within valid range
+            if 2 <= val <= 5:
+                return True
+            else:
+                # Invalid value - will trigger correction
+                self.master.after_idle(self._validate_and_correct)
+                return False
+        except ValueError:
+            # Not a valid integer - will trigger correction
+            self.master.after_idle(self._validate_and_correct)
+            return False
+    
+    def _validate_and_correct(self) -> None:
+        """
+        Validate and correct the spinbox value to ensure it's within range.
+        If the current value is invalid, reset it to the last valid value or default.
+        """
+        try:
+            current = self.size_var.get()
+            # If current value is outside range, correct it
+            if current < 2:
+                self.size_var.set(2)
+            elif current > 5:
+                self.size_var.set(5)
+        except tk.TclError:
+            # If IntVar has invalid value, reset to default
+            self.size_var.set(3)
 
 
 def main() -> None:

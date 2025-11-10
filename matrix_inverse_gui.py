@@ -74,7 +74,7 @@ class MatrixInverseApp:
         )
         self.size_spin.grid(row=0, column=1, sticky="w")
         # Bind additional event to validate on Return key
-        self.size_spin.bind('<Return>', lambda e: self._validate_and_correct())
+        self.size_spin.bind('<Return>', lambda e: self._ensure_valid_size())
 
         # Placeholder buttons
         self.compute_btn = ttk.Button(controls, text="Compute Inverse")
@@ -124,46 +124,52 @@ class MatrixInverseApp:
     
     def _validate_size(self, value_if_allowed: str) -> bool:
         """
-        Validate that the spinbox value is within the allowed range (2-5).
+        Validates the proposed spinbox value.
+        
+        This method is called by the `validatecommand` when the spinbox's content changes
+        or loses focus (due to `validate='focusout'`). It checks if the `value_if_allowed`
+        is a valid integer within the allowed range (2-5).
         
         Args:
-            value_if_allowed: The proposed value as a string
+            value_if_allowed: The proposed value as a string.
             
         Returns:
-            True if valid, False otherwise (which triggers correction)
+            True if the value is valid or temporarily acceptable (e.g., empty string during editing).
+            False if the value is invalid, which will cause Tkinter to revert the spinbox
+            to its last valid state and also revert the `textvariable`.
         """
         if value_if_allowed == "":
-            # Empty string during editing is allowed temporarily
+            # Allow empty string during editing. Tkinter will revert on focus out if not filled.
             return True
         
         try:
             val = int(value_if_allowed)
-            # Check if value is within valid range
-            if 2 <= val <= 5:
-                return True
-            else:
-                # Invalid value - will trigger correction
-                self.master.after_idle(self._validate_and_correct)
-                return False
+            return 2 <= val <= 5
         except ValueError:
-            # Not a valid integer - will trigger correction
-            self.master.after_idle(self._validate_and_correct)
+            # Not a valid integer
             return False
     
-    def _validate_and_correct(self) -> None:
+    def _ensure_valid_size(self) -> None:
         """
-        Validate and correct the spinbox value to ensure it's within range.
-        If the current value is invalid, reset it to the last valid value or default.
+        Ensures the `size_var` (and thus the spinbox value) is within the valid range (2-5).
+        
+        This method is typically called after a user action (e.g., pressing Enter)
+        to explicitly correct an out-of-range or non-integer value that might have
+        been temporarily set in the `IntVar` or not caught by `validatecommand` during
+        a `focusout` event.
+        If the `IntVar` holds a non-integer value (e.g., user typed "abc" and pressed Enter
+        before `focusout` validation), it resets it to the default (3).
         """
         try:
-            current = self.size_var.get()
-            # If current value is outside range, correct it
-            if current < 2:
+            current_value = self.size_var.get()
+            # Correct if current value is outside the allowed range
+            if current_value < 2:
                 self.size_var.set(2)
-            elif current > 5:
+            elif current_value > 5:
                 self.size_var.set(5)
         except tk.TclError:
-            # If IntVar has invalid value, reset to default
+            # If size_var holds a non-integer string (e.g., from direct entry not caught by validation)
+            # Reset to default.
             self.size_var.set(3)
 
 

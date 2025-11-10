@@ -42,8 +42,8 @@ class MatrixInverseApp:
     def _init_state(self) -> None:
         # IntVar for matrix size (2–5), default 3
         self.size_var = tk.IntVar(value=3)
-        # Register validation command for spinbox
-        self.validate_cmd = self.master.register(self._validate_size)
+        # Storage for Entry widgets (2D list)
+        self.entries: list = []
 
     def _build_layout(self) -> None:
         # Controls frame (top)
@@ -69,12 +69,10 @@ class MatrixInverseApp:
             width=5,
             wrap=False,
             justify="center",
-            validate="focusout",
-            validatecommand=(self.validate_cmd, '%P')
         )
         self.size_spin.grid(row=0, column=1, sticky="w")
-        # Bind additional event to validate on Return key
-        self.size_spin.bind('<Return>', lambda e: self._validate_and_correct())
+        # Rebuild grid and clear results whenever size changes
+        self.size_var.trace_add("write", self._on_size_var_changed)
 
         # Placeholder buttons
         self.compute_btn = ttk.Button(controls, text="Compute Inverse")
@@ -97,6 +95,9 @@ class MatrixInverseApp:
         self.input_grid_frame.grid(row=1, column=0, sticky="nsew")
         self.input_grid_frame.rowconfigure(0, weight=1)
         self.input_grid_frame.columnconfigure(0, weight=1)
+
+        # Build default 3x3 grid on startup
+        self.rebuild_input_grid(3)
 
         # Results section container
         results_section = ttk.Frame(self.master, padding=(10, 5))
@@ -121,50 +122,63 @@ class MatrixInverseApp:
         self.results_text.delete("1.0", tk.END)
         self.results_text.insert("1.0", text)
         self.results_text.configure(state="disabled")
-    
-    def _validate_size(self, value_if_allowed: str) -> bool:
-        """
-        Validate that the spinbox value is within the allowed range (2-5).
-        
-        Args:
-            value_if_allowed: The proposed value as a string
-            
-        Returns:
-            True if valid, False otherwise (which triggers correction)
-        """
-        if value_if_allowed == "":
-            # Empty string during editing is allowed temporarily
-            return True
-        
+
+    # --- New functionality for dynamic input grid and results clearing ---
+    def clear_results(self) -> None:
+        """Wipe the results text widget content (keeps it enabled state consistent)."""
+        self.results_text.configure(state="normal")
+        self.results_text.delete("1.0", tk.END)
+        self.results_text.configure(state="disabled")
+
+    def _on_size_var_changed(self, *_) -> None:
+        """Callback when the matrix size IntVar changes."""
         try:
-            val = int(value_if_allowed)
-            # Check if value is within valid range
-            if 2 <= val <= 5:
-                return True
-            else:
-                # Invalid value - will trigger correction
-                self.master.after_idle(self._validate_and_correct)
-                return False
-        except ValueError:
-            # Not a valid integer - will trigger correction
-            self.master.after_idle(self._validate_and_correct)
-            return False
-    
-    def _validate_and_correct(self) -> None:
+            n = int(self.size_var.get())
+        except Exception:
+            return  # ignore invalid intermediate states
+        # constrain to 2..5 just in case
+        n = max(2, min(5, n))
+        self.rebuild_input_grid(n)
+        self.clear_results()
+
+    def rebuild_input_grid(self, n: int) -> None:
+        """Rebuild the n x n Entry widget grid inside input_grid_frame.
+
+        - Destroys any existing Entry widgets
+        - Creates new n x n Entry widgets, blank, stored in self.entries
+        - Configures grid row/column weights for responsive resizing
         """
-        Validate and correct the spinbox value to ensure it's within range.
-        If the current value is invalid, reset it to the last valid value or default.
-        """
-        try:
-            current = self.size_var.get()
-            # If current value is outside range, correct it
-            if current < 2:
-                self.size_var.set(2)
-            elif current > 5:
-                self.size_var.set(5)
-        except tk.TclError:
-            # If IntVar has invalid value, reset to default
-            self.size_var.set(3)
+        # Destroy existing children (only Entry widgets are expected)
+        for child in list(self.input_grid_frame.winfo_children()):
+            child.destroy()
+
+        # Reset previous row/column weights to 0 before reconfiguring
+        # Determine previous dimension from stored entries if available
+        prev_rows = len(self.entries) if isinstance(self.entries, list) else 0
+        prev_cols = len(self.entries[0]) if (prev_rows and isinstance(self.entries[0], list)) else 0
+        for r in range(prev_rows):
+            self.input_grid_frame.rowconfigure(r, weight=0)
+        for c in range(prev_cols):
+            self.input_grid_frame.columnconfigure(c, weight=0)
+
+        # Prepare storage
+        self.entries = []
+
+        # Build new grid
+        pad = {"padx": 3, "pady": 3}
+        for r in range(n):
+            row_widgets: list[tk.Entry] = []
+            for c in range(n):
+                e = ttk.Entry(self.input_grid_frame, width=8, justify="center")
+                e.grid(row=r, column=c, sticky="nsew", **pad)
+                row_widgets.append(e)
+            self.entries.append(row_widgets)
+
+        # Configure grid weights so cells expand with the window
+        for r in range(n):
+            self.input_grid_frame.rowconfigure(r, weight=1)
+        for c in range(n):
+            self.input_grid_frame.columnconfigure(c, weight=1)
 
 
 def main() -> None:

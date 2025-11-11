@@ -14,6 +14,8 @@ class TestMatrixInverseApp(unittest.TestCase):
     def setUp(self):
         """Set up a test root window and app for each test."""
         self.root = tk.Tk()
+        # Hide the GUI window during tests to avoid side effects in headless envs
+        self.root.withdraw()
         self.app = MatrixInverseApp(self.root)
     
     def tearDown(self):
@@ -95,6 +97,34 @@ class TestMatrixInverseApp(unittest.TestCase):
         value = self.app.size_var.get()
         self.assertEqual(value, 5,
                         f"Spinbox should accept value 5, but got {value}")
+
+    def test_validate_size_logic_unit(self):
+        """Directly test the _validate_size helper for edge cases."""
+        self.assertTrue(self.app._validate_size(""))       # allow empty during edit
+        self.assertTrue(self.app._validate_size("2"))
+        self.assertTrue(self.app._validate_size("3"))
+        self.assertTrue(self.app._validate_size("5"))
+        self.assertFalse(self.app._validate_size("1"))
+        self.assertFalse(self.app._validate_size("6"))
+        self.assertFalse(self.app._validate_size("abc"))
+        self.assertFalse(self.app._validate_size("-1"))
+
+    def test_ensure_valid_size_enforces_bounds_and_resets_on_error(self):
+        """Ensure _ensure_valid_size clamps values and handles TclError path."""
+        # Below minimum -> clamped to 2
+        self.app.size_var.set(1)
+        self.app._ensure_valid_size()
+        self.assertEqual(self.app.size_var.get(), 2)
+
+        # Above maximum -> clamped to 5
+        self.app.size_var.set(10)
+        self.app._ensure_valid_size()
+        self.assertEqual(self.app.size_var.get(), 5)
+
+        # Non-integer value in IntVar -> triggers TclError on get, resets to default (3)
+        self.app.size_var.set("abc")
+        self.app._ensure_valid_size()
+        self.assertEqual(self.app.size_var.get(), 3)
 
 
 if __name__ == "__main__":

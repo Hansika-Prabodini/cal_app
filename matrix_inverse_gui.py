@@ -68,7 +68,7 @@ class MatrixInverseApp:
             width=5,
             wrap=False,
             justify="center",
-            validate="focusout",
+            validate="all",
             validatecommand=(self.validate_cmd, '%P')
         )
         self.size_spin.grid(row=0, column=1, sticky="w")
@@ -126,7 +126,7 @@ class MatrixInverseApp:
         Validates the proposed spinbox value.
         
         This method is called by the `validatecommand` when the spinbox's content changes
-        or loses focus (due to `validate='focusout'`). It checks if the `value_if_allowed`
+        (due to `validate='all'`). It checks if the `value_if_allowed`
         is a valid integer within the allowed range (2-5).
         
         Args:
@@ -154,10 +154,9 @@ class MatrixInverseApp:
         
         This method is typically called after a user action (e.g., pressing Enter)
         to explicitly correct an out-of-range or non-integer value that might have
-        been temporarily set in the `IntVar` or not caught by `validatecommand` during
-        a `focusout` event.
+        been temporarily set in the `IntVar` or not caught by `validatecommand`.
         If the `IntVar` holds a non-integer value (e.g., user typed "abc" and pressed Enter
-        before `focusout` validation), it resets it to the default (3).
+        before validation), it resets it to the default (3).
         """
         try:
             current_value = self.size_var.get()

@@ -1,17 +1,16 @@
-"""
-Matrix Inverse Calculator - Tkinter GUI Skeleton
+"""Matrix Inverse Calculator - Tkinter GUI Skeleton (refactored)
 
 This module provides the initial GUI scaffolding only. No computation
 or validation is implemented in this ticket.
 
-Requirements addressed:
-- Tk root window with title, resizable, geometry and minsize
-- Top-level layout frames: controls, input grid area, results area
-- Size selector (IntVar 2–5, default 3) via Spinbox
-- Placeholder buttons: Compute Inverse, Clear
-- Section labels: Matrix Size, Input Matrix, Inverse (Result)
-- Results area uses a disabled Text widget placeholder
-- Grid weights so input and results areas expand
+Enhancements:
+- Clear, self-contained layout using Tkinter's grid geometry manager
+- A resizable root window with a sensible minsize and a default geometry
+- Size selector (Spinbox) restricted to matrix sizes 2–5 with validation
+- Placeholder controls: "Compute Inverse" and "Clear"
+- Distinct sections: Input Matrix and Inverse (Result) with labeled headings
+- Results area uses a disabled Text widget as a placeholder
+- Layout weights ensure input and result sections expand gracefully
 - Run guard to start mainloop
 """
 

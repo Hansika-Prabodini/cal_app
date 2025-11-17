@@ -1,0 +1,23 @@
+# Python Requirements File
+# ========================
+# This project requires Python 3.x (3.6 or higher recommended for tkinter compatibility)
+#
+# Current Status:
+# - The codebase currently uses only Python standard library modules
+# - Main dependencies: tkinter (GUI), unittest (testing)
+# - These are included with standard Python distributions
+#
+# Future Dependencies:
+# - This file is ready for addition of external dependencies as the project grows
+# - Common scientific computing libraries that may be added:
+#   - numpy (for matrix operations)
+#   - scipy (for advanced numerical computations)
+#
+# Usage:
+# - Install dependencies: pip install -r requirements.txt
+# - Currently: No external packages to install
+
+# External dependencies (none yet)
+# Add new dependencies below as needed, e.g.:
+# numpy>=1.20.0
+# scipy>=1.7.0

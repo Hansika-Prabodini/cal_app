@@ -1,21 +1,23 @@
-"""Matrix Inverse Calculator - Tkinter GUI Skeleton (refactored)
+"""
+Matrix Inverse Calculator - Tkinter GUI Skeleton
 
 This module provides the initial GUI scaffolding only. No computation
 or validation is implemented in this ticket.
 
-Enhancements:
-- Clear, self-contained layout using Tkinter's grid geometry manager
-- A resizable root window with a sensible minsize and a default geometry
-- Size selector (Spinbox) restricted to matrix sizes 2–5 with validation
-- Placeholder controls: "Compute Inverse" and "Clear"
-- Distinct sections: Input Matrix and Inverse (Result) with labeled headings
-- Results area uses a disabled Text widget as a placeholder
-- Layout weights ensure input and result sections expand gracefully
+Requirements addressed:
+- Tk root window with title, resizable, geometry and minsize
+- Top-level layout frames: controls, input grid area, results area
+- Size selector (IntVar 2–5, default 3) via Spinbox
+- Placeholder buttons: Compute Inverse, Clear
+- Section labels: Matrix Size, Input Matrix, Inverse (Result)
+- Results area uses a disabled Text widget placeholder
+- Grid weights so input and results areas expand
 - Run guard to start mainloop
 """
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 
 
 class MatrixInverseApp:
@@ -24,6 +26,8 @@ class MatrixInverseApp:
         self._configure_root()
         self._init_state()
         self._build_layout()
+        # Placeholder: in a complete app, the input grid would be built and
+        # hooked into read_matrix_from_entries().
 
     # Root/window configuration
     def _configure_root(self) -> None:
@@ -68,15 +72,15 @@ class MatrixInverseApp:
             width=5,
             wrap=False,
             justify="center",
-            validate="all",
+            validate="focusout",
             validatecommand=(self.validate_cmd, '%P')
         )
         self.size_spin.grid(row=0, column=1, sticky="w")
         # Bind additional event to validate on Return key
-        self.size_spin.bind('<Return>', lambda e: self._ensure_valid_size())
+        self.size_spin.bind('<Return>', lambda e: self._validate_and_correct())
 
         # Placeholder buttons
-        self.compute_btn = ttk.Button(controls, text="Compute Inverse")
+        self.compute_btn = ttk.Button(controls, text="Compute Inverse", command=self.on_compute)
         self.compute_btn.grid(row=0, column=4, padx=(8, 8))
 
         self.clear_btn = ttk.Button(controls, text="Clear")
@@ -123,52 +127,138 @@ class MatrixInverseApp:
     
     def _validate_size(self, value_if_allowed: str) -> bool:
         """
-        Validates the proposed spinbox value.
-        
-        This method is called by the `validatecommand` when the spinbox's content changes
-        (due to `validate='all'`). It checks if the `value_if_allowed`
-        is a valid integer within the allowed range (2-5).
+        Validate that the spinbox value is within the allowed range (2-5).
         
         Args:
-            value_if_allowed: The proposed value as a string.
+            value_if_allowed: The proposed value as a string
             
         Returns:
-            True if the value is valid or temporarily acceptable (e.g., empty string during editing).
-            False if the value is invalid, which will cause Tkinter to revert the spinbox
-            to its last valid state and also revert the `textvariable`.
+            True if valid, False otherwise (which triggers correction)
         """
         if value_if_allowed == "":
-            # Allow empty string during editing. Tkinter will revert on focus out if not filled.
+            # Empty string during editing is allowed temporarily
             return True
         
         try:
             val = int(value_if_allowed)
-            return 2 <= val <= 5
+            # Check if value is within valid range
+            if 2 <= val <= 5:
+                return True
+            else:
+                # Invalid value - will trigger correction
+                self.master.after_idle(self._validate_and_correct)
+                return False
         except ValueError:
-            # Not a valid integer
+            # Not a valid integer - will trigger correction
+            self.master.after_idle(self._validate_and_correct)
             return False
     
-    def _ensure_valid_size(self) -> None:
+    def _validate_and_correct(self) -> None:
         """
-        Ensures the `size_var` (and thus the spinbox value) is within the valid range (2-5).
-        
-        This method is typically called after a user action (e.g., pressing Enter)
-        to explicitly correct an out-of-range or non-integer value that might have
-        been temporarily set in the `IntVar` or not caught by `validatecommand`.
-        If the `IntVar` holds a non-integer value (e.g., user typed "abc" and pressed Enter
-        before validation), it resets it to the default (3).
+        Validate and correct the spinbox value to ensure it's within range.
+        If the current value is invalid, reset it to the last valid value or default.
         """
         try:
-            current_value = self.size_var.get()
-            # Correct if current value is outside the allowed range
-            if current_value < 2:
+            current = self.size_var.get()
+            # If current value is outside range, correct it
+            if current < 2:
                 self.size_var.set(2)
-            elif current_value > 5:
+            elif current > 5:
                 self.size_var.set(5)
         except tk.TclError:
-            # If size_var holds a non-integer string (e.g., from direct entry not caught by validation)
-            # Reset to default.
+            # If IntVar has invalid value, reset to default
             self.size_var.set(3)
+
+    # --- Results helpers ---
+    def clear_results(self) -> None:
+        """Clear the results Text widget safely (maintaining read-only state)."""
+        try:
+            self.results_text.configure(state="normal")
+            self.results_text.delete("1.0", tk.END)
+        finally:
+            self.results_text.configure(state="disabled")
+
+    def render_inverse_result(self, inv) -> None:
+        """Render the inverse matrix to the results area with 4-decimal formatting."""
+        try:
+            self.results_text.configure(state="normal")
+            self.results_text.delete("1.0", tk.END)
+            lines = [" ".join(f"{x:.4f}" for x in row) for row in inv]
+            self.results_text.insert("1.0", "\n".join(lines))
+        finally:
+            self.results_text.configure(state="disabled")
+
+    # --- Compute handler ---
+    def on_compute(self) -> None:
+        """
+        Handle the Compute Inverse action:
+        - Parse inputs via read_matrix_from_entries()
+        - Call invert_matrix(a)
+        - Handle singular matrices with a clear error message
+        - Render results on success
+        """
+        # Prevent accidental double submission
+        try:
+            self.compute_btn.configure(state="disabled")
+        except Exception:
+            pass
+
+        # Clear/overwrite results area before computing
+        self.clear_results()
+
+        try:
+            # Obtain matrix from entries
+            try:
+                if hasattr(self, "read_matrix_from_entries"):
+                    a = getattr(self, "read_matrix_from_entries")()
+                else:
+                    # Fall back to module-level function if available
+                    a = read_matrix_from_entries()
+            except NameError:
+                # If parsing is not wired yet, raise to generic handler
+                raise RuntimeError("Input parser is not available")
+
+            # If parsing signals failure by returning None or False, abort
+            if a is None or a is False:
+                return
+
+            # Compute inverse
+            try:
+                inv = invert_matrix(a)
+            except ValueError as e:
+                msg = str(e)
+                if ("singular" in msg.lower()) or getattr(e, "singular", False):
+                    messagebox.showerror('Error', 'Matrix is singular')
+                    return
+                # Non-singular ValueError -> generic error
+                messagebox.showerror('Error', msg or 'An error occurred')
+                return
+            except Exception as e:
+                messagebox.showerror('Error', str(e) or 'An unexpected error occurred')
+                return
+
+            # Render success
+            try:
+                if hasattr(self, "render_inverse_result"):
+                    self.render_inverse_result(inv)
+                else:
+                    render_inverse_result(inv)
+            except NameError:
+                # Fallback: simple 4-decimal formatting into results_text
+                try:
+                    self.results_text.configure(state="normal")
+                    formatted = "\n".join(
+                        [" ".join(f"{x:.4f}" for x in row) for row in inv]
+                    )
+                    self.results_text.insert("1.0", formatted)
+                finally:
+                    self.results_text.configure(state="disabled")
+        finally:
+            # Re-enable button after processing
+            try:
+                self.compute_btn.configure(state="normal")
+            except Exception:
+                pass
 
 
 def main() -> None:

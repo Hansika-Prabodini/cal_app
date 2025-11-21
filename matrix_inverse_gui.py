@@ -74,6 +74,8 @@ class MatrixInverseApp:
         self.size_spin.grid(row=0, column=1, sticky="w")
         # Bind additional event to validate on Return key
         self.size_spin.bind('<Return>', lambda e: self._ensure_valid_size())
+        # Bind FocusOut event to validate when user leaves the field
+        self.size_spin.bind('<FocusOut>', lambda e: self._ensure_valid_size())
 
         # Placeholder buttons
         self.compute_btn = ttk.Button(controls, text="Compute Inverse")

@@ -14,6 +14,11 @@ Enhancements:
 - Run guard to start mainloop
 """
 
+# Constants for matrix size limits
+MIN_MATRIX_SIZE = 2
+MAX_MATRIX_SIZE = 5
+DEFAULT_MATRIX_SIZE = 3
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -39,8 +44,8 @@ class MatrixInverseApp:
         self.master.columnconfigure(0, weight=1)
 
     def _init_state(self) -> None:
-        # IntVar for matrix size (2–5), default 3
-        self.size_var = tk.IntVar(value=3)
+        # IntVar for matrix size (MIN_MATRIX_SIZE–MAX_MATRIX_SIZE), default DEFAULT_MATRIX_SIZE
+        self.size_var = tk.IntVar(value=DEFAULT_MATRIX_SIZE)
         # Register validation command for spinbox
         self.validate_cmd = self.master.register(self._validate_size)
 
@@ -48,22 +53,25 @@ class MatrixInverseApp:
         # Controls frame (top)
         controls = ttk.Frame(self.master, padding=(10, 10))
         controls.grid(row=0, column=0, sticky="ew")
-        controls.columnconfigure(0, weight=0)
-        controls.columnconfigure(1, weight=0)
-        controls.columnconfigure(2, weight=0)
-        controls.columnconfigure(3, weight=1)  # spacer/stretch
-        controls.columnconfigure(4, weight=0)
-        controls.columnconfigure(5, weight=0)
+        # Configure columns for controls frame:
+        # Col 0: size_label (fixed)
+        # Col 1: size_spin (fixed)
+        # Col 2: (empty, fixed)
+        # Col 3: spacer/stretch (expands)
+        # Col 4: compute_btn (fixed)
+        # Col 5: clear_btn (fixed)
+        controls.columnconfigure((0, 1, 2, 4, 5), weight=0)
+        controls.columnconfigure(3, weight=1) # Spacer column expands
 
         # Matrix Size label
         size_label = ttk.Label(controls, text="Matrix Size")
         size_label.grid(row=0, column=0, sticky="w", padx=(0, 8))
 
-        # Size selector Spinbox (2–5), default shown from IntVar=3
+        # Size selector Spinbox (MIN_MATRIX_SIZE–MAX_MATRIX_SIZE), default shown from IntVar
         self.size_spin = ttk.Spinbox(
             controls,
-            from_=2,
-            to=5,
+            from_=MIN_MATRIX_SIZE,
+            to=MAX_MATRIX_SIZE,
             textvariable=self.size_var,
             width=5,
             wrap=False,
@@ -143,7 +151,7 @@ class MatrixInverseApp:
         
         try:
             val = int(value_if_allowed)
-            return 2 <= val <= 5
+            return MIN_MATRIX_SIZE <= val <= MAX_MATRIX_SIZE
         except ValueError:
             # Not a valid integer
             return False
@@ -161,14 +169,14 @@ class MatrixInverseApp:
         try:
             current_value = self.size_var.get()
             # Correct if current value is outside the allowed range
-            if current_value < 2:
-                self.size_var.set(2)
-            elif current_value > 5:
-                self.size_var.set(5)
+            if current_value < MIN_MATRIX_SIZE:
+                self.size_var.set(MIN_MATRIX_SIZE)
+            elif current_value > MAX_MATRIX_SIZE:
+                self.size_var.set(MAX_MATRIX_SIZE)
         except tk.TclError:
             # If size_var holds a non-integer string (e.g., from direct entry not caught by validation)
             # Reset to default.
-            self.size_var.set(3)
+            self.size_var.set(DEFAULT_MATRIX_SIZE)
 
 
 def main() -> None:
